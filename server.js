@@ -7,6 +7,12 @@ var fs = require('fs');
 //Globals
 var dataReceivedMarker = {};
 
+//
+//
+// OBD connection setup //
+//
+//
+
 // Don't set the bluetooth-obd during development
 if (process.env.NODE_ENV != "development") {
     var btOBDReader = new OBDReader();
@@ -14,11 +20,10 @@ if (process.env.NODE_ENV != "development") {
     // Use first device with 'obd' in the name
     btOBDReader.autoconnect('obd');
 
+    //set polling for vehicle speed and engine RPM
     btOBDReader.on('connected', function() {
-        //this.requestValueByName("vss"); //vss = vehicle speed sensor
         this.addPoller("vss");
         this.addPoller("rpm");
-
         this.startPolling(1000); //Request all values each second.
     });
 
@@ -26,19 +31,36 @@ if (process.env.NODE_ENV != "development") {
         console.log(data);
         dataReceivedMarker = data;
     });
+
+    btOBDReader.on('error', function(data) {
+        console.log('Error: ' + data);
+    });
+
+    btOBDReader.on('debug', function(data) {
+        console.log('Debug: ' + data.body);
+    });
 }
 
+//
+//
+// Express server setup //
+//
+//
 
-
-// Express server setup
 var app = express();
 
 app.use('/', express.static(path.join(__dirname, 'public')));
 
-var server = app.listen(8090);
-console.log('Server listening on port 8090');
+var server = app.listen(3000);
+console.log('Server listening on port 3000');
+console.log('Data Recieved Marker: ' + JSON.stringify(dataReceivedMarker, null, 2));
 
-// Socket.IO part
+//
+//
+// Socket io setup //
+//
+//
+
 var io = require('socket.io')(server);
 
 io.on('connection', function(socket) {
@@ -46,30 +68,23 @@ io.on('connection', function(socket) {
 
     //send data to client
     setInterval(function() {
-
         // Change values so you can see it go up when developing
         if (process.env.NODE_ENV === "development") {
-            if (rpm < 7200) {
-                rpm += 11
+            if (dataReceivedMarker.rpm < 7200) {
+                dataReceivedMarker.rpm += 11
             } else {
-                rpm = 0
+                dataReceivedMarker.rpm = 0
             }
-            if (mph < 120) {
-                mph += 1
+            if (dataReceivedMarker.mph < 120) {
+                dataReceivedMarker.mph += 1
             } else {
-                mph = 0
-            }
-            if (coolantTemp < 210) {
-                coolantTemp += 1
-            } else {
-                coolantTemp = 0
+                dataReceivedMarker.mph = 0
             }
         }
 
         socket.emit('ecuData', {
             'rpm': Math.floor(rpm),
-            'mph': Math.floor(mph),
-            'coolantTemp': Math.floor(coolantTemp)
+            'mph': Math.floor(mph)
         });
     }, 100);
 });
