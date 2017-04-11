@@ -38,30 +38,45 @@ function set(index, rgbArr) {
     update();
 }
 
-// Color states
-//green functions
-function set_green(i) {
-    leds.setPixel(i, 0, 156, 0, BRIGHTNESS); //position, r, g, b, brightness
-    leds.sendUpdate();
-    console.log('set pixel ' + i + ' green');
-}
+function simulate_rpm(i) {
+  var green = [0, 255, 0];
+  var yellow = [255, 255, 0];
+  var red = [255, 0, 0];
+  var off = [0, 0, 0];
 
-//yellow functions
-function set_yellow(i) {
-    leds.setPixel(i, 156, 156, 0, BRIGHTNESS); //position, r, g, b, brightness
-    leds.sendUpdate();
-    console.log('set pixel ' + i + ' yellow');
-}
-
-//red functions
-function set_red(i) {
-    leds.setPixel(i, 156, 0, 0, BRIGHTNESS); //position, r, g, b, brightness
-    leds.sendUpdate();
-    console.log('set pixel ' + i + ' red');
+    if (i == 0) {
+      set(i, green);
+      set(i + 1, off);
+      set(i + 2, off);
+      set(i + 3, off);
+      set(i + 4, off);
+      set(i + 5, off);
+      set(i + 6, off);
+      set(i + 7, off);
+    }
+    if (i == 1) {
+      set(i, green);
+    }
+    if (i == 2) {
+      set(i, green);
+    }
+    if (i == 3) {
+      set(i, green);
+    }
+    if (i == 4) {
+      set(i, yellow);
+    }
+    if (i == 5) {
+      set(i, yellow);
+    }
+    if (i == 6) {
+      set(i, red);
+    }
+    if (i == 7) {
+      set(i, red);
+    }
 }
 
 module.exports.set = set;
 module.exports.setAll = setAll;
-module.exports.set_red = set_red;
-module.exports.set_green = set_green;
-module.exports.set_yellow = set_yellow;
+module.exports.simulate_rpm = simulate_rpm;
