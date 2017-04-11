@@ -7,7 +7,7 @@ var io = require('socket.io')(server);
 
 //import local modules
 var leds = require('./common/leds.js');
-var delayMillis = 100; //1 second
+var delayMillis = 50; //1 second
 
 
 function simulate_rpm(i) {
