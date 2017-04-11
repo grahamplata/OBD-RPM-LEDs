@@ -1,8 +1,67 @@
-//import modules
+//import node modules
 var OBDReader = require('bluetooth-obd');
-var express = require('express');
 var path = require('path');
 var fs = require('fs');
+var express = require('express');
+var io = require('socket.io')(server);
+
+//import local modules
+var leds = require('./common/leds.js');
+var delayMillis = 100; //1 second
+
+
+function simulate_rpm(i) {
+  var green = [0, 255, 0];
+  var yellow = [255, 255, 0];
+  var red = [255, 0, 0];
+  var off = [0, 0, 0];
+
+    if (i == 0) {
+      leds.set(i, green);
+      leds.set(i + 1, off);
+      leds.set(i + 2, off);
+      leds.set(i + 3, off);
+      leds.set(i + 4, off);
+      leds.set(i + 5, off);
+      leds.set(i + 6, off);
+      leds.set(i + 7, off);
+    }
+    if (i == 1) {
+      leds.set(i, green);
+    }
+    if (i == 2) {
+      leds.set(i, green);
+    }
+    if (i == 3) {
+      leds.set(i, green);
+    }
+    if (i == 4) {
+      leds.set(i, yellow);
+    }
+    if (i == 5) {
+      leds.set(i, yellow);
+    }
+    if (i == 6) {
+      leds.set(i, red);
+    }
+    if (i == 7) {
+      leds.set(i, red);
+    }
+}
+
+var num = 0;
+setInterval(function() {
+    if (process.env.NODE_ENV === "development") {
+
+        if (num < 8) {
+            simulate_rpm(num);
+            console.log('pixel: ' + num + ' set');
+            num += 1
+        } else {
+            num = 0
+        }
+    }
+}, delayMillis);
 
 //Globals
 var dataReceivedMarker = {};
@@ -60,8 +119,6 @@ console.log('Data Recieved Marker: ' + JSON.stringify(dataReceivedMarker, null, 
 // Socket io setup //
 //
 //
-
-var io = require('socket.io')(server);
 
 io.on('connection', function(socket) {
     console.log('New client connected!');
