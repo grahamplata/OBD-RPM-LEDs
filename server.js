@@ -11,28 +11,26 @@ var leds = require('./common/leds.js');
 //Globals
 var dataReceivedMarker = {};
 
-
 // Simulates RPMS on Blink
 if (process.env.NODE_ENV === "development") {
-    var delayMillis = 50; //1000 = 1 second
-    var num = 0; //init
+    var delayMillis = 1000; //1000 = 1 second
+    var num = 0; //init number variable
+    //sets interval at which leds are sequentially lit
     setInterval(function() {
         if (num < 8) {
             leds.simulate_rpm(num);
             //console.log('pixel: ' + num + ' set');
             num += 1
+            
         } else {
+            //reset loop
             num = 0
         }
+        //set delay
     }, delayMillis);
 }
 
-//
-//
-// OBD connection setup //
-//
-//
-
+// OBD connection setup
 // Don't set the bluetooth-obd during development
 if (process.env.NODE_ENV != "development") {
     var btOBDReader = new OBDReader();
@@ -61,12 +59,8 @@ if (process.env.NODE_ENV != "development") {
     });
 }
 
-//
-//
-// Express server setup //
-//
-//
-
+// Express
+// Server setup
 var app = express();
 
 app.use('/', express.static(path.join(__dirname, 'public')));
@@ -75,18 +69,14 @@ var server = app.listen(3000);
 console.log('Server listening on port 3000');
 console.log('Data Recieved Marker: ' + JSON.stringify(dataReceivedMarker, null, 2));
 
-//
-//
-// Socket io setup //
-//
-//
-
+// Websocket
+// Socket io setup 
 io.on('connection', function(socket) {
     console.log('New client connected!');
 
     //send data to client
     setInterval(function() {
-        // Change values so you can see it go up when developing
+        // Cycles values while developing... 
         if (process.env.NODE_ENV === "development") {
             if (dataReceivedMarker.rpm < 7200) {
                 dataReceivedMarker.rpm += 11
@@ -99,10 +89,10 @@ io.on('connection', function(socket) {
                 dataReceivedMarker.mph = 0
             }
         }
-
+        // emits speed and rpm data via websocket
         socket.emit('ecuData', {
             'rpm': Math.floor(rpm),
             'mph': Math.floor(mph)
         });
-    }, 100);
+    }, 100); // emit delay 1/10th of a second
 });
