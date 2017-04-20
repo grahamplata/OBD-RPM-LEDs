@@ -7,12 +7,17 @@ var OBDReader = require('serial-obd');
 
 //import common modules
 var leds = require('./common/leds.js');
+var rotation = require('./common/rpms.js');
 
 //configurations for serial over bluetooth
 var options = {};
 options.baudrate = 115200;
 var serialOBDReader = new OBDReader("/dev/rfcomm0", options);
-var dataReceivedMarker = {};
+
+
+// All the values we are getting from the OBD port
+var dataReceivedMarker = {}; // Object returned by OBDII
+var rpm, mph, coolantTemp = 0; // defaults 
 
 // Express Server setup
 var app = express();
@@ -22,34 +27,47 @@ app.use('/', express.static(path.join(__dirname, 'public')));
 var server = app.listen(3000);
 console.log('Server listening on port 3000');
 
+
 // OBDII Calls
 if (process.env.NODE_ENV != "development") {
 
-    serialOBDReader.on('dataReceived', function (data) {
-        console.log(data);
-        dataReceivedMarker = data;
-    });
+    serialOBDReader.connect();
 
     // On connection begin polling data
     serialOBDReader.on('connected', function (data) {
         this.addPoller("vss");
         this.addPoller("rpm");
-        this.addPoller("temp");
 
-        this.startPolling(); // 75ms default polling rate * 3 for each call == .225seconds polling rate
+        this.startPolling(100); // 75ms default polling rate * 3 for each call == .225seconds polling rate
     });
 
-    serialOBDReader.connect();
+    serialOBDReader.on('dataReceived', function (data) {
+        dataReceivedMarker = data;
+
+        if (dataReceivedMarker.name === "rpm") {
+            rpm = dataReceivedMarker.value;
+        }
+        if (dataReceivedMarker.name === "vss") {
+            mph = dataReceivedMarker.value;
+        }
+        if (dataReceivedMarker.name === "temp") {
+            coolantTemp = dataReceivedMarker.value;
+        }
+
+        console.log("Current RPM: " + rpm + ' | Current MPH: ' + mph + ' | Current MPH: ' + coolantTemp);
+    });
 }
+
+
 
 // Socket.IO 
 io.on('connection', function (socket) {
     console.log('New client connected!');
+
     var delayMillis = 100; //1000 = 1 second
 
     //send data to client
     setInterval(function () {
-
         // Change values so you can see it go up when developing
         if (process.env.NODE_ENV === "development") {
             if (rpm < 7200) {
@@ -57,38 +75,61 @@ io.on('connection', function (socket) {
             } else {
                 rpm = 0
             }
+            if (vss < 200) {
+                vss += 7
+            } else {
+                vss = 0
+            }
+            if (temp < 300) {
+                temp += 3
+            } else {
+                temp = 0
+            }
         }
+
+        // define event and emit data
+        socket.emit('obdData', {
+            'rpm': Math.floor(rpm),
+            'vss': Math.floor(mph),
+            'temp': Math.floor(coolantTemp)
+        });
+
     }, delayMillis);
 });
-
 
 // Simulates RPMS on Blink
 if (process.env.NODE_ENV === "development") {
     var delayMillis = 50; //1000 = 1 second
     var num = 0; //init number variable
-    var rpm = 0; //rpms
+    var simRPM = 0;
     //sets interval at which leds are sequentially lit
     setInterval(function () {
-        if (rpm < 7200) {
-            Set_LEDS(rpm);
-            rpm += 11
-            //console.log(rpm);
+
+        if (simRPM < 7200) {
+            simRPM += 50
+            Set_LEDS(simRPM);
         } else {
-            Set_LEDS(rpm);
-            rpm = 0
+            simRPM = 0
+            Set_LEDS(simRPM);
         }
     }, delayMillis);
-}
-// converts rpms to led values
-function Convert_RPM_to_LED(rpm) {
-    var led_num = rpm / 1000
-    return Math.round(led_num);
 }
 
 // sets leds based on rpms
 function Set_LEDS(rpm) {
-    var num = Convert_RPM_to_LED(rpm);
+    var num = rotation.convert_rpm_to_led(rpm);
     if (num < 8) {
         leds.simulate_rpm(num);
     }
+}
+
+// 
+function parseData(data) {
+
+    if (data !== undefined) {
+        rpm = convertRPM(data[1], data[2]);
+        coolantTemp = convertCoolantTemp(data[0]);
+        mph = convertMPH(data[3]);
+    }
+
 }
