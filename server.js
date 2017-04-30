@@ -17,13 +17,13 @@ var serialOBDReader = new OBDReader("/dev/rfcomm0", options);
 
 // All the values we are getting from the OBD port
 var dataReceivedMarker = {}; // Object returned by OBDII
-var rpm, mph, coolantTemp = 0; // defaults 
+var rpm = 0;
+var mph = 0;
+var coolantTemp = 0; // defaults 
 
 // Express Server setup
 var app = express();
-
 app.use('/', express.static(path.join(__dirname, 'public')));
-
 var server = app.listen(3000);
 console.log('Server listening on port 3000');
 
@@ -31,30 +31,19 @@ console.log('Server listening on port 3000');
 // OBDII Calls
 if (process.env.NODE_ENV != "development") {
 
+    // initiates connection to obd
     serialOBDReader.connect();
 
     // On connection begin polling data
     serialOBDReader.on('connected', function (data) {
-        this.addPoller("vss");
         this.addPoller("rpm");
-
-        this.startPolling(100); // 75ms default polling rate * 3 for each call == .225seconds polling rate
+        this.startPolling(50); // 75ms default polling rate * 3 for each call == .225seconds polling rate
     });
 
     serialOBDReader.on('dataReceived', function (data) {
-        dataReceivedMarker = data;
-
-        if (dataReceivedMarker.name === "rpm") {
-            rpm = dataReceivedMarker.value;
-        }
-        if (dataReceivedMarker.name === "vss") {
-            mph = dataReceivedMarker.value;
-        }
-        if (dataReceivedMarker.name === "temp") {
-            coolantTemp = dataReceivedMarker.value;
-        }
-
-        console.log("Current RPM: " + rpm + ' | Current MPH: ' + mph + ' | Current MPH: ' + coolantTemp);
+        newData = Math.floor(data.value);
+        Set_LEDS(newData); // Sets LEDS based on OBDII data
+        console.log(newData); //debug
     });
 }
 
@@ -121,15 +110,4 @@ function Set_LEDS(rpm) {
     if (num < 8) {
         leds.simulate_rpm(num);
     }
-}
-
-// 
-function parseData(data) {
-
-    if (data !== undefined) {
-        rpm = convertRPM(data[1], data[2]);
-        coolantTemp = convertCoolantTemp(data[0]);
-        mph = convertMPH(data[3]);
-    }
-
 }
